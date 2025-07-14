@@ -1,0 +1,55 @@
+#Assignment 12
+#-------------------------------------------------------------------------------------------------------------------------------------------
+#1.data ingestion
+dbutils.fs.ls("dbfs:/Volumes/hello/default/dbfile/Sales.csv")
+#read csv
+df=spark.read.csv("dbfs:/Volumes/hello/default/dbfile/Sales.csv",header=True,inferSchema=True)
+display(df)
+#-------------------------------------------------------------------------------------------------------------------------------------------
+
+#2.data exploration
+
+df.display(5)
+df.printSchema()
+print(df.columns)
+#--------------------------------------------------------------------------------------------------------------------------------------------
+
+#3.data filtering
+
+filtered_df = df.filter(df["SALES"] > 100)
+display(filtered_df)
+#--------------------------------------------------------------------------------------------------------------------------------------------
+
+# 4. Select Relevant Columns
+
+selected_df = filtered_df.select("MSRP", "PHONE", "STATE")
+display(selected_df)
+#-------------------------------------------------------------------------------------------------------------------------------------------
+
+# 5. Delta Table Management
+
+# Write to Delta table using append mode
+selected_df.write.format("delta").mode("append").saveAsTable("default.agg_sales_data")
+spark.sql("SELECT * FROM default.agg_sales_data").show()
+#--------------------------------------------------------------------------------------------------------------------------------------------
+
+#6 verison control
+
+#check history
+df_history=spark.sql("DESCRIBE HISTORY agg_sales_data")
+display(df_history)
+#read data from a specific version of the delta table
+version_number=1
+f_version0 = spark.read.format("delta").option("versionAsOf", 0).table("default.agg_sales_data")
+display(f_version0)
+#-------------------------------------------------------------------------------------------------------------------------------------------
+
+#7. Advanced Transformation
+
+df_advanced = df.filter((df["SALES"] > 2500) & (df["DEALSIZE"] == "Small"))
+df_advanced.display()
+#Save to partitioned Delta table
+df_advanced.write.format("delta") \
+    .mode("overwrite") \
+    .partitionBy("PRODUCTLINE") \
+    .save("dbfs:/Volumes/hello/default/dbfile/Sales_advanced")
