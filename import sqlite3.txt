@@ -1,0 +1,58 @@
+import sqlite3
+import hashlib
+
+# Connect to the SQLite database (creates file if not exists)
+conn = sqlite3.connect("user_management.db")
+cursor = conn.cursor()
+
+# Create users table if it doesn't exist
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL
+    )
+''')
+conn.commit()
+
+# Session variable
+current_user = None
+
+# Hash password using SHA-256
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+# Register new user
+def register():
+    username = input("Enter a username: ").strip()
+    password = input("Enter a password: ").strip()
+
+    hashed_pw = hash_password(password)
+
+    try:
+        cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed_pw))
+        conn.commit()
+        print("✅ User registered successfully.")
+    except sqlite3.IntegrityError:
+        print("⚠️ Username already exists. Try a different one.")
+
+def login():
+    global current_user
+    username = input("Enter username: ").strip()
+    password = input("Enter password: ").strip()
+    hashed_pw = hash_password(password)
+
+    cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, hashed_pw))
+    user = cursor.fetchone()
+
+    if user:
+        current_user = username
+        print(f"✅ Logged in as {username}")
+    else:
+        print("❌ Invalid username or password.")
+
+# Change password
+def change_password():
+    global current_user
+    if not current_user:
+        print("⚠️ Please log in to change your password.")
